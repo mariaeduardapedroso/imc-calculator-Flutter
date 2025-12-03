@@ -99,12 +99,19 @@ class _ImcHomePageState extends State<ImcHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.scale),
-            SizedBox(width: 8),
-            Text('Calculadora de IMC'),
+            Image.asset(
+              'images/logo.png', // Caminho para o seu logo
+              height: 30, // Ajuste a altura conforme necessário
+              errorBuilder: (context, error, stackTrace) {
+                // Caso o logo não carregue, mostra o ícone de balança
+                return const Icon(Icons.scale, size: 30);
+              },
+            ),
+            const SizedBox(width: 8),
+            const Text('Calculadora de IMC'),
           ],
         ),
         centerTitle: true,

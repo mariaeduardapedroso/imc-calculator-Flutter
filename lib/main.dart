@@ -1,122 +1,379 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
+      title: 'Calculadora de IMC',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        inputDecorationTheme: const InputDecorationTheme(
+          border: OutlineInputBorder(),
+        ),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const ImcHomePage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class ImcHomePage extends StatefulWidget {
+  const ImcHomePage({Key? key}) : super(key: key);
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<ImcHomePage> createState() => _ImcHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _ImcHomePageState extends State<ImcHomePage> {
+  final _weightController = TextEditingController();
+  final _heightController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
 
-  void _incrementCounter() {
+  double? _bmi;
+  double? _bmiPrime;
+  String _category = '';
+  Color _categoryColor = Colors.grey.shade300;
+
+  // Table ranges (BMI) and corresponding IMC Prime ranges
+  final List<_ImcCategory> _categories = [
+    _ImcCategory('Abaixo do peso (magreza extrema)', double.negativeInfinity, 16.0, 0, 0.64, Colors.indigo),
+    _ImcCategory('Abaixo do peso (magreza moderada)', 16.0, 17.0, 0.64, 0.68, Colors.blue),
+    _ImcCategory('Abaixo do peso (leve magreza)', 17.0, 18.5, 0.68, 0.74, Colors.lightBlue),
+    _ImcCategory('Faixa normal', 18.5, 25.0, 0.74, 1.00, Colors.green),
+    _ImcCategory('Sobrepeso (Pré-obesidade)', 25.0, 30.0, 1.00, 1.20, Colors.amber),
+    _ImcCategory('Obeso (Classe I)', 30.0, 35.0, 1.20, 1.40, Colors.orange),
+    _ImcCategory('Obeso (Classe II)', 35.0, 40.0, 1.40, 1.60, Colors.deepOrange),
+    _ImcCategory('Obeso (Classe III)', 40.0, double.infinity, 1.60, double.infinity, Colors.red),
+  ];
+
+  void _calculate() {
+    if (!_formKey.currentState!.validate()) return;
+
+    final weight = double.tryParse(_weightController.text.replaceAll(',', '.'));
+    final height = double.tryParse(_heightController.text.replaceAll(',', '.'));
+    if (weight == null || height == null) return;
+
+    // height is expected in centimeters; convert to meters
+    final hMeters = height > 10 ? height / 100 : height; // if user already provided meters
+
+    final bmi = weight / (hMeters * hMeters);
+    final bmiPrime = bmi / 25.0; // IMC Prime defined with reference to 25 -> 1.0
+
+    final category = _categories.firstWhere(
+      (c) => bmi >= c.min && bmi < c.max,
+      orElse: () => _categories.last,
+    );
+
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _bmi = double.parse(bmi.toStringAsFixed(2));
+      _bmiPrime = double.parse(bmiPrime.toStringAsFixed(2));
+      _category = category.name;
+      _categoryColor = category.color.withOpacity(0.95);
+    });
+  }
+
+  void _reset() {
+    _weightController.clear();
+    _heightController.clear();
+    setState(() {
+      _bmi = null;
+      _bmiPrime = null;
+      _category = '';
+      _categoryColor = Colors.grey.shade300;
     });
   }
 
   @override
+  void dispose() {
+    _weightController.dispose();
+    _heightController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.scale),
+            SizedBox(width: 8),
+            Text('Calculadora de IMC'),
+          ],
+        ),
+        centerTitle: true,
+        elevation: 2,
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 800;
+
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: isWide ? _buildWide(context) : _buildNarrow(context),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNarrow(BuildContext context) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildFormCard(),
+          const SizedBox(height: 16),
+          _buildResultCard(),
+          const SizedBox(height: 16),
+          _buildLegendCard(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWide(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 5,
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                _buildFormCard(),
+                const SizedBox(height: 16),
+                _buildLegendCard(),
+              ],
             ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(flex: 4, child: _buildResultCard()),
+      ],
+    );
+  }
+
+  Widget _buildFormCard() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Insira seus dados', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _weightController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Peso (kg)',
+                  hintText: 'ex: 68.5',
+                  prefixIcon: Icon(Icons.monitor_weight),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Informe o peso';
+                  final parsed = double.tryParse(v.replaceAll(',', '.'));
+                  if (parsed == null || parsed <= 0) return 'Peso inválido';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _heightController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Altura (cm ou m)',
+                  hintText: 'ex: 175 ou 1.75',
+                  prefixIcon: Icon(Icons.height),
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Informe a altura';
+                  final parsed = double.tryParse(v.replaceAll(',', '.'));
+                  if (parsed == null || parsed <= 0) return 'Altura inválida';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _calculate,
+                      icon: const Icon(Icons.calculate),
+                      label: const Text('Calcular'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  OutlinedButton(
+                    onPressed: _reset,
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 14.0, horizontal: 8.0),
+                      child: Text('Limpar'),
+                    ),
+                  )
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Dica: você pode inserir altura em centímetros (ex: 175) ou metros (ex: 1.75). IMC = peso / (altura²). IMC Prime = IMC / 25.0',
+                style: TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultCard() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+      decoration: BoxDecoration(
+        color: _categoryColor.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _categoryColor.withOpacity(0.18)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Resultado', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 12),
+          if (_bmi == null)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32.0),
+              child: Center(child: Text('Preencha os dados e toque em Calcular', textAlign: TextAlign.center)),
+            )
+          else ...[
+            _buildResultTile('IMC', _bmi!.toStringAsFixed(2)),
+            const SizedBox(height: 8),
+            _buildResultTile('IMC Prime', _bmiPrime!.toStringAsFixed(2)),
+            const SizedBox(height: 12),
+            Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              color: _categoryColor.withOpacity(0.16),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_category, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    _buildCategoryProgress(),
+                    const SizedBox(height: 8),
+                    Text(_explainCategory(), style: const TextStyle(fontSize: 12)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResultTile(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 16)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+      ],
+    );
+  }
+
+  Widget _buildCategoryProgress() {
+    if (_bmi == null) return const SizedBox.shrink();
+
+    final cat = _categories.firstWhere((c) => _bmi! >= c.min && _bmi! < c.max, orElse: () => _categories.last);
+
+    // calculate progress inside this category's BMI range
+    final min = cat.min.isFinite ? cat.min : 10.0; // clamp for display
+    final max = cat.max.isFinite ? cat.max : (cat.min + 20);
+    final clamped = _bmi!.clamp(min, max);
+    final progress = (clamped - min) / (max - min);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Posição na faixa (${min.toStringAsFixed(1)} - ${max.toStringAsFixed(1)})', style: const TextStyle(fontSize: 12)),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: LinearProgressIndicator(value: progress, minHeight: 12),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLegendCard() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('Tabela de referência', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            ..._categories.map((c) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6.0),
+              child: Row(
+                children: [
+                  Container(width: 14, height: 14, decoration: BoxDecoration(color: c.color, borderRadius: BorderRadius.circular(4))),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('${c.name} — ${_formatRange(c.min, c.max)} (IMC Prime ${_formatRange(c.primeMin, c.primeMax)})')),
+                ],
+              ),
+            )).toList(),
+            const SizedBox(height: 8),
+            const Text('Observação: a tabela utiliza IMC (kg/m²) e IMC Prime. IMC Prime é calculado como IMC / 25.0, e serve para comparar ao limite superior da "faixa normal" (25 -> 1.0).', style: TextStyle(fontSize: 12)),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
+
+  String _formatRange(double min, double max) {
+    if (!min.isFinite) return '< ${_numToStr(max)}';
+    if (!max.isFinite) return '≥ ${_numToStr(min)}';
+    if (min == max) return _numToStr(min);
+    return '${_numToStr(min)} – ${_numToStr(max)}';
+  }
+
+  String _numToStr(double v) {
+    if (v == v.roundToDouble()) return v.toInt().toString();
+    return v.toStringAsFixed(2);
+  }
+
+  String _explainCategory() {
+    if (_bmi == null || _bmiPrime == null) return '';
+    final cat = _categories.firstWhere((c) => _bmi! >= c.min && _bmi! < c.max, orElse: () => _categories.last);
+    return 'Seu IMC é $_bmi e IMC Prime é $_bmiPrime. Esta faixa (${_formatRange(cat.min, cat.max)}) indica: ${cat.name}.';
+  }
+}
+
+class _ImcCategory {
+  final String name;
+  final double min;
+  final double max;
+  final double primeMin;
+  final double primeMax;
+  final Color color;
+
+  _ImcCategory(this.name, this.min, this.max, this.primeMin, this.primeMax, this.color);
 }
